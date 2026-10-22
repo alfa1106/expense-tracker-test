@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expense Tracker</title>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #ffffff;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --primary: #0f766e;
+      --primary-hover: #0d9488;
+      --danger: #dc2626;
+      --success: #16a34a;
+      --border: #e5e7eb;
+      --shadow: 0 4px 20px rgba(0,0,0,0.07);
+      --radius: 14px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px 16px 60px;
+    }
+
+    .app { max-width: 560px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 20px; }
+    header h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; }
+    header p { color: var(--muted); font-size: 0.95rem; margin-top: 4px; }
+
+    .balance-card {
+      background: linear-gradient(135deg, #0f766e, #0d9488);
+      color: white;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .balance-card .label { font-size: 0.85rem; opacity: 0.9; }
+    .balance-card .balance-amount { font-size: 2rem; font-weight: 700; margin: 4px 0 12px; }
+    .balance-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+    .balance-details div {
+      background: rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+    .balance-details .val { font-weight: 700; font-size: 0.95rem; margin-top: 2px; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .summary-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px 10px;
+      text-align: center;
+      box-shadow: var(--shadow);
+    }
+    .summary-card .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+    .summary-card .amount { font-size: 1.05rem; font-weight: 700; margin-top: 4px; }
+    .summary-card.today .amount { color: #0f766e; }
+    .summary-card.week .amount { color: #0369a1; }
+    .summary-card.month .amount { color: #7c3aed; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card h2 { font-size: 1.05rem; margin-bottom: 14px; font-weight: 600; }
+
+    .form-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .form-group { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+    .form-group label { font-size: 0.8rem; color: var(--muted); font-weight: 500; }
+
+    input, select {
+      padding: 11px 13px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.95rem;
+      outline: none;
+      font-family: inherit;
+      width: 100%;
+    }
+    input:focus, select:focus { border-color: var(--primary); }
+
+    .location-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+    .location-info {
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--muted);
+      background: #f8fafc;
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      padding: 11px 13px;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+    }
+    .location-info.has-location {
+      color: var(--primary);
+      border-style: solid;
+      background: #f0fdfa;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 12px 18px;
+      transition: background 0.2s;
+    }
+    .btn-primary { background: var(--primary); color: white; width: 100%; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-income { background: var(--success); color: white; width: 100%; }
+    .btn-income:hover { background: #15803d; }
+    .btn-location {
+      background: #e0f2fe;
+      color: #0369a1;
+      white-space: nowrap;
+      padding: 11px 14px;
+    }
+    .btn-location:hover { background: #bae6fd; }
+    .btn-location.loading { opacity: 0.7; pointer-events: none; }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: var(--text);
+      padding: 11px 14px;
+      font-size: 0.9rem;
+    }
+    .btn-secondary:hover { background: #e2e8f0; }
+
+    .form-tabs, .view-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      background: #e5e7eb;
+      padding: 4px;
+      border-radius: 12px;
+    }
+    .form-tab, .view-tab {
+      flex: 1;
+      text-align: center;
+      padding: 9px 6px;
+      border-radius: 9px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      border: none;
+      background: transparent;
+    }
+    .form-tab.active, .view-tab.active {
+      background: white;
+      color: var(--text);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .budget-setup { display: flex; gap: 10px; align-items: flex-end; }
+    .budget-setup .form-group { flex: 1; }
+
+    .day-group { margin-bottom: 18px; }
+    .day-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      padding: 0 4px;
+    }
+    .day-header .date { font-weight: 600; font-size: 0.9rem; }
+    .day-header .total { font-size: 0.85rem; font-weight: 600; }
+
+    .item {
+      display: flex;
+      gap: 12px;
+      padding: 13px 12px;
+      background: #fafafa;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      align-items: flex-start;
+    }
+    .item-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    .item-details { flex: 1; min-width: 0; }
+    .item-title { font-weight: 600; font-size: 0.95rem; }
+    .item-meta {
+      font-size: 0.78rem;
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      margin-top: 3px;
+    }
+    .item-amount { font-weight: 700; font-size: 1rem; white-space: nowrap; }
+    .item-amount.expense { color: var(--danger); }
+    .item-amount.income { color: var(--success); }
+    .item-actions { opacity: 0; transition: opacity 0.2s; }
+    .item:hover .item-actions { opacity: 1; }
+    .delete-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 1rem; padding: 4px; border-radius: 6px;
+    }
+    .delete-btn:hover { background: #fee2e2; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    .empty-state span { font-size: 2.4rem; display: block; margin-bottom: 10px; }
+
+    .cat-food { background: #fef3c7; }
+    .cat-transport { background: #dbeafe; }
+    .cat-shopping { background: #fce7f3; }
+    .cat-bills { background: #e0e7ff; }
+    .cat-entertainment { background: #d1fae5; }
+    .cat-health { background: #ffe4e6; }
+    .cat-other { background: #f3f4f6; }
+    .cat-income { background: #dcfce7; }
+
+    .breakdown-list { list-style: none; }
+    .breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .breakdown-item:last-child { border-bottom: none; }
+    .breakdown-item .cat-name {
+      display: flex; align-items: center; gap: 10px; font-weight: 500;
+    }
+    .breakdown-item .cat-amount { font-weight: 700; color: var(--danger); }
+    .bar-bg {
+      height: 6px; background: #e5e7eb; border-radius: 4px;
+      margin-top: 6px; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 4px; background: var(--primary);
+      transition: width 0.4s ease;
+    }
+
+    .export-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-export {
+      flex: 1;
+      min-width: 90px;
+      background: #f1f5f9;
+      color: var(--text);
+      padding: 11px 10px;
+      font-size: 0.82rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .btn-export:hover { background: #e2e8f0; }
+
+    footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>Expense Tracker</h1>
+      <p>Budget • Income • Expenses</p>
+    </header>
+
+    <!-- Balance Overview -->
+    <div class="balance-card">
+      <div class="label">Remaining Balance</div>
+      <div class="balance-amount" id="balanceAmount">Rp 0</div>
+      <div class="balance-details">
+        <div>
+          <div>Budget</div>
+          <div class="val" id="budgetVal">Rp 0</div>
+        </div>
+        <div>
+          <div>Income</div>
+          <div class="val" id="incomeVal">Rp 0</div>
+        </div>
+        <div>
+          <div>Spent</div>
+          <div class="val" id="spentVal">Rp 0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="summary-grid">
+      <div class="summary-card today">
+        <div class="label">Today</div>
+        <div class="amount" id="sumToday">Rp 0</div>
+      </div>
+      <div class="summary-card week">
+        <div class="label">This Week</div>
+        <div class="amount" id="sumWeek">Rp 0</div>
+      </div>
+      <div class="summary-card month">
+        <div class="label">This Month</div>
+        <div class="amount" id="sumMonth">Rp 0</div>
+      </div>
+    </div>
+
+    <!-- Budget Setup -->
+    <div class="card">
+      <h2>Set Initial Budget</h2>
+      <div class="budget-setup">
+        <div class="form-group">
+          <label>Budget Amount (Rp)</label>
+          <input type="number" id="budgetInput" placeholder="e.g. 5000000" min="0" step="10000" />
+        </div>
+        <button class="btn btn-secondary" id="setBudgetBtn">Set Budget</button>
+      </div>
+      <p style="font-size:0.8rem; color:var(--muted); margin-top:8px;">
+        This is your starting money. You can update it anytime.
+      </p>
+      <div class="export-row">
+        <button class="btn btn-export" id="exportJsonBtn" title="Full backup">⬇️ JSON</button>
+        <button class="btn btn-export" id="exportCsvBtn" title="Spreadsheet">⬇️ CSV</button>
+        <button class="btn btn-export" id="importBtn" title="Restore backup">⬆️ Import</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden />
+      </div>
+    </div>
+
+    <!-- Add Form -->
+    <div class="card">
+      <div class="form-tabs">
+        <button class="form-tab active" data-form="expense">➖ Expense</button>
+        <button class="form-tab" data-form="income">➕ Income</button>
+      </div>
+
+      <!-- Expense Form -->
+      <div id="expenseForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount (Rp)</label>
+            <input type="number" id="amount" placeholder="25000" min="0" step="1000" />
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="category">
+              <option value="food">🍔 Food & Drink</option>
+              <option value="transport">🚗 Transport</option>
+              <option value="shopping">🛒 Shopping</option>
+              <option value="bills">📄 Bills</option>
+              <option value="entertainment">🎬 Entertainment</option>
+              <option value="health">💊 Health</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Note (optional)</label>
+          <input type="text" id="note" placeholder="Lunch at warung..." />
+        </div>
+        <div class="location-row">
+          <div class="location-info" id="locationInfo">📍 Location not set</div>
+          <button class="btn btn-location" id="getLocationBtn">Get GPS</button>
+        </div>
+        <button class="btn btn-primary" id="addExpenseBtn">Add Expense</button>
+      </div>
+
+      <!-- Income Form -->
+      <div id="incomeForm" class="hidden">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount (Rp)</label>
+            <input type="number" id="incomeAmount" placeholder="3000000" min="0" step="10000" />
+          </div>
+          <div class="form-group">
+            <label>Source</label>
+            <select id="incomeSource">
+              <option value="salary">💼 Salary</option>
+              <option value="freelance">💻 Freelance</option>
+              <option value="gift">🎁 Gift</option>
+              <option value="refund">↩️ Refund</option>
+              <option value="other">📦 Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label>Note (optional)</label>
+          <input type="text" id="incomeNote" placeholder="Monthly salary..." />
+        </div>
+        <button class="btn btn-income" id="addIncomeBtn">Add Income</button>
+      </div>
+    </div>
+
+    <!-- Transactions -->
+    <div class="card">
+      <div class="view-tabs">
+        <button class="view-tab active" data-view="daily">Daily</button>
+        <button class="view-tab" data-view="weekly">Weekly</button>
+        <button class="view-tab" data-view="monthly">Monthly</button>
+      </div>
+      <div id="contentArea"></div>
+    </div>
+
+    <footer>Data is saved locally in your browser</footer>
+  </div>
+
+  <script>
+    let transactions = JSON.parse(localStorage.getItem("transactions")) || [];
+    let budget = Number(localStorage.getItem("budget")) || 0;
+    let currentLocation = null;
+    let currentView = "daily";
+    let currentForm = "expense";
+
+    // Migrate old data
+    const oldExpenses = JSON.parse(localStorage.getItem("expenses"));
+    if (oldExpenses && oldExpenses.length && transactions.length === 0) {
+      transactions = oldExpenses.map(e => ({ ...e, type: "expense" }));
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+    }
+
+    const CATEGORY_META = {
+      food: { icon: "🍔", label: "Food & Drink", class: "cat-food" },
+      transport: { icon: "🚗", label: "Transport", class: "cat-transport" },
+      shopping: { icon: "🛒", label: "Shopping", class: "cat-shopping" },
+      bills: { icon: "📄", label: "Bills", class: "cat-bills" },
+      entertainment: { icon: "🎬", label: "Entertainment", class: "cat-entertainment" },
+      health: { icon: "💊", label: "Health", class: "cat-health" },
+      other: { icon: "📦", label: "Other", class: "cat-other" },
+      salary: { icon: "💼", label: "Salary", class: "cat-income" },
+      freelance: { icon: "💻", label: "Freelance", class: "cat-income" },
+      gift: { icon: "🎁", label: "Gift", class: "cat-income" },
+      refund: { icon: "↩️", label: "Refund", class: "cat-income" }
+    };
+
+    function save() {
+      localStorage.setItem("transactions", JSON.stringify(transactions));
+      localStorage.setItem("budget", budget);
+    }
+
+    function formatMoney(n) {
+      return "Rp " + Number(n).toLocaleString("id-ID");
+    }
+
+    function formatTime(ts) {
+      return new Date(ts).toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function formatDate(ts) {
+      const d = new Date(ts);
+      const today = new Date();
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (d.toDateString() === today.toDateString()) return "Today";
+      if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+      return d.toLocaleDateString("en", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+    }
+
+    function formatFullDateTime(ts) {
+      return new Date(ts).toLocaleString("en", {
+        day: "numeric", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit"
+      });
+    }
+
+    function startOfDay(ts) {
+      const d = new Date(ts); d.setHours(0,0,0,0); return d.getTime();
+    }
+    function startOfWeek(ts) {
+      const d = new Date(ts);
+      const day = d.getDay();
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+      d.setDate(diff); d.setHours(0,0,0,0); return d.getTime();
+    }
+    function startOfMonth(ts) {
+      const d = new Date(ts); d.setDate(1); d.setHours(0,0,0,0); return d.getTime();
+    }
+
+    function escapeHtml(t) {
+      const d = document.createElement("div");
+      d.textContent = t; return d.innerHTML;
+    }
+
+    // Location
+    document.getElementById("getLocationBtn").addEventListener("click", () => {
+      if (!navigator.geolocation) { alert("Geolocation not supported"); return; }
+      const btn = document.getElementById("getLocationBtn");
+      const info = document.getElementById("locationInfo");
+      btn.classList.add("loading");
+      btn.textContent = "Getting...";
+      info.textContent = "📍 Requesting location...";
+
+      navigator.geolocation.getCurrentPosition(async (pos) => {
+        const { latitude, longitude, accuracy } = pos.coords;
+        currentLocation = { lat: latitude, lng: longitude, accuracy: Math.round(accuracy) };
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`, {
+            headers: { "Accept-Language": "en" }
+          });
+          const data = await res.json();
+          currentLocation.address = data.display_name
+            ? data.display_name.split(",").slice(0, 3).join(",").trim()
+            : `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        } catch {
+          currentLocation.address = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+        }
+        info.className = "location-info has-location";
+        info.innerHTML = `📍 ${currentLocation.address} <small>(±${currentLocation.accuracy}m)</small>`;
+        btn.classList.remove("loading");
+        btn.textContent = "Update GPS";
+      }, (err) => {
+        let msg = "Could not get location";
+        if (err.code === 1) msg = "Location permission denied";
+        if (err.code === 2) msg = "Location unavailable";
+        if (err.code === 3) msg = "Location timed out";
+        info.textContent = "📍 " + msg;
+        info.className = "location-info";
+        btn.classList.remove("loading");
+        btn.textContent = "Get GPS";
+        currentLocation = null;
+      }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
+    });
+
+    function calcTotals() {
+      const now = Date.now();
+      const todayStart = startOfDay(now);
+      const weekStart = startOfWeek(now);
+      const monthStart = startOfMonth(now);
+
+      let totalIncome = 0, totalExpense = 0;
+      let todayExp = 0, weekExp = 0, monthExp = 0;
+
+      transactions.forEach(t => {
+        if (t.type === "income") {
+          totalIncome += t.amount;
+        } else {
+          totalExpense += t.amount;
+          if (t.createdAt >= todayStart) todayExp += t.amount;
+          if (t.createdAt >= weekStart) weekExp += t.amount;
+          if (t.createdAt >= monthStart) monthExp += t.amount;
+        }
+      });
+
+      const remaining = budget + totalIncome - totalExpense;
+      document.getElementById("balanceAmount").textContent = formatMoney(remaining);
+      document.getElementById("budgetVal").textContent = formatMoney(budget);
+      document.getElementById("incomeVal").textContent = formatMoney(totalIncome);
+      document.getElementById("spentVal").textContent = formatMoney(totalExpense);
+      document.getElementById("sumToday").textContent = formatMoney(todayExp);
+      document.getElementById("sumWeek").textContent = formatMoney(weekExp);
+      document.getElementById("sumMonth").textContent = formatMoney(monthExp);
+    }
+
+    function renderItem(t) {
+      const isIncome = t.type === "income";
+      const meta = CATEGORY_META[t.category] || CATEGORY_META.other;
+      let loc = "";
+      if (t.location?.address) {
+        loc = `<span title="${t.location.lat}, ${t.location.lng}">📍 ${t.location.address}</span>`;
+      }
+      return `
+        <div class="item" data-id="${t.id}">
+          <div class="item-icon ${meta.class}">${meta.icon}</div>
+          <div class="item-details">
+            <div class="item-title">${escapeHtml(t.note || meta.label)}</div>
+            <div class="item-meta">
+              <span>${meta.label}</span>
+              <span title="${formatFullDateTime(t.createdAt)}">🕒 ${formatTime(t.createdAt)}</span>
+              ${loc}
+            </div>
+          </div>
+          <div class="item-amount ${isIncome ? "income" : "expense"}">
+            ${isIncome ? "+" : "-"}${formatMoney(t.amount)}
+          </div>
+          <div class="item-actions">
+            <button class="delete-btn" data-action="delete">🗑️</button>
+          </div>
+        </div>`;
+    }
+
+    function renderDaily() {
+      const area = document.getElementById("contentArea");
+      if (transactions.length === 0) {
+        area.innerHTML = `<div class="empty-state"><span>💸</span><p>No transactions yet. Add expense or income above!</p></div>`;
+        return;
+      }
+      const groups = {};
+      transactions.slice().sort((a,b) => b.createdAt - a.createdAt).forEach(t => {
+        const key = startOfDay(t.createdAt);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(t);
+      });
+      let html = "";
+      Object.keys(groups).sort((a,b) => b - a).forEach(dayKey => {
+        const list = groups[dayKey];
+        let dayExp = 0, dayInc = 0;
+        list.forEach(t => t.type === "income" ? dayInc += t.amount : dayExp += t.amount);
+        const net = dayInc - dayExp;
+        const color = net >= 0 ? "var(--success)" : "var(--danger)";
+        html += `
+          <div class="day-group">
+            <div class="day-header">
+              <span class="date">${formatDate(Number(dayKey))}</span>
+              <span class="total" style="color:${color}">${net >= 0 ? "+" : ""}${formatMoney(net)}</span>
+            </div>
+            ${list.map(t => renderItem(t)).join("")}
+          </div>`;
+      });
+      area.innerHTML = html;
+    }
+
+    function renderBreakdown(periodStart, label) {
+      const area = document.getElementById("contentArea");
+      const filtered = transactions.filter(t => t.createdAt >= periodStart && t.type === "expense");
+      if (filtered.length === 0) {
+        area.innerHTML = `<div class="empty-state"><span>📊</span><p>No expenses ${label.toLowerCase()} yet.</p></div>`;
+        return;
+      }
+      const byCat = {};
+      let total = 0;
+      filtered.forEach(e => { byCat[e.category] = (byCat[e.category] || 0) + e.amount; total += e.amount; });
+      const sorted = Object.entries(byCat).sort((a,b) => b[1] - a[1]);
+      const periodIncome = transactions.filter(t => t.createdAt >= periodStart && t.type === "income")
+        .reduce((s,t) => s + t.amount, 0);
+
+      let html = `
+        <div style="text-align:center; margin-bottom:16px;">
+          <div style="font-size:0.85rem; color:var(--muted);">${label}</div>
+          <div style="font-size:1.4rem; font-weight:700; color:var(--danger);">Spent ${formatMoney(total)}</div>
+          ${periodIncome > 0 ? `<div style="font-size:0.95rem; color:var(--success); margin-top:4px;">Income +${formatMoney(periodIncome)}</div>` : ""}
+        </div>
+        <ul class="breakdown-list">`;
+      sorted.forEach(([cat, amount]) => {
+        const meta = CATEGORY_META[cat] || CATEGORY_META.other;
+        const pct = total > 0 ? Math.round((amount / total) * 100) : 0;
+        html += `
+          <li class="breakdown-item">
+            <div style="flex:1;">
+              <div class="cat-name">
+                <span class="item-icon ${meta.class}" style="width:32px;height:32px;font-size:1rem;">${meta.icon}</span>
+                ${meta.label}
+              </div>
+              <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+            </div>
+            <div style="text-align:right; margin-left:14px;">
+              <div class="cat-amount">${formatMoney(amount)}</div>
+              <div style="font-size:0.75rem; color:var(--muted);">${pct}%</div>
+            </div>
+          </li>`;
+      });
+      html += `</ul><div style="margin-top:16px; font-size:0.85rem; color:var(--muted); text-align:center;">${filtered.length} expense${filtered.length !== 1 ? "s" : ""}</div>`;
+      area.innerHTML = html;
+    }
+
+    function render() {
+      calcTotals();
+      if (budget > 0) document.getElementById("budgetInput").value = budget;
+      if (currentView === "daily") renderDaily();
+      else if (currentView === "weekly") renderBreakdown(startOfWeek(Date.now()), "This Week");
+      else renderBreakdown(startOfMonth(Date.now()), "This Month");
+    }
+
+    // Events
+    document.getElementById("setBudgetBtn").addEventListener("click", () => {
+      const val = parseFloat(document.getElementById("budgetInput").value);
+      if (isNaN(val) || val < 0) return;
+      budget = val;
+      save();
+      render();
+    });
+
+    document.getElementById("addExpenseBtn").addEventListener("click", () => {
+      const amount = parseFloat(document.getElementById("amount").value);
+      if (!amount || amount <= 0) { document.getElementById("amount").focus(); return; }
+      transactions.unshift({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+        type: "expense",
+        amount,
+        category: document.getElementById("category").value,
+        note: document.getElementById("note").value.trim(),
+        createdAt: Date.now(),
+        location: currentLocation ? { ...currentLocation } : null
+      });
+      save();
+      document.getElementById("amount").value = "";
+      document.getElementById("note").value = "";
+      document.getElementById("amount").focus();
+      render();
+    });
+
+    document.getElementById("addIncomeBtn").addEventListener("click", () => {
+      const amount = parseFloat(document.getElementById("incomeAmount").value);
+      if (!amount || amount <= 0) { document.getElementById("incomeAmount").focus(); return; }
+      transactions.unshift({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2),
+        type: "income",
+        amount,
+        category: document.getElementById("incomeSource").value,
+        note: document.getElementById("incomeNote").value.trim(),
+        createdAt: Date.now(),
+        location: null
+      });
+      save();
+      document.getElementById("incomeAmount").value = "";
+      document.getElementById("incomeNote").value = "";
+      document.getElementById("incomeAmount").focus();
+      render();
+    });
+
+    document.querySelectorAll(".form-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".form-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentForm = tab.dataset.form;
+        document.getElementById("expenseForm").classList.toggle("hidden", currentForm !== "expense");
+        document.getElementById("incomeForm").classList.toggle("hidden", currentForm !== "income");
+      });
+    });
+
+    document.querySelectorAll(".view-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        document.querySelectorAll(".view-tab").forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        currentView = tab.dataset.view;
+        render();
+      });
+    });
+
+    document.getElementById("contentArea").addEventListener("click", e => {
+      const btn = e.target.closest("[data-action='delete']");
+      if (!btn) return;
+      const item = btn.closest(".item");
+      if (item) {
+        transactions = transactions.filter(t => t.id !== item.dataset.id);
+        save();
+        render();
+      }
+    });
+
+    document.getElementById("amount").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("addExpenseBtn").click(); });
+    document.getElementById("incomeAmount").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("addIncomeBtn").click(); });
+    document.getElementById("budgetInput").addEventListener("keydown", e => { if (e.key === "Enter") document.getElementById("setBudgetBtn").click(); });
+
+    // ===== Export =====
+    function downloadFile(filename, content, mime) {
+      const blob = new Blob([content], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function exportJSON() {
+      const data = {
+        exportedAt: new Date().toISOString(),
+        budget: budget,
+        transactions: transactions
+      };
+      const json = JSON.stringify(data, null, 2);
+      const date = new Date().toISOString().slice(0, 10);
+      downloadFile(`expense-backup-${date}.json`, json, "application/json");
+    }
+
+    function exportCSV() {
+      const headers = ["Type", "Amount", "Category", "Note", "Date", "Time", "Latitude", "Longitude", "Address"];
+      const rows = transactions
+        .slice()
+        .sort((a, b) => a.createdAt - b.createdAt)
+        .map(t => {
+          const d = new Date(t.createdAt);
+          const date = d.toLocaleDateString("en-CA"); // YYYY-MM-DD
+          const time = d.toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          const lat = t.location?.lat ?? "";
+          const lng = t.location?.lng ?? "";
+          const address = (t.location?.address || "").replace(/"/g, '""');
+          const note = (t.note || "").replace(/"/g, '""');
+          const category = t.category || "";
+          return [
+            t.type,
+            t.amount,
+            category,
+            `"${note}"`,
+            date,
+            time,
+            lat,
+            lng,
+            `"${address}"`
+          ].join(",");
+        });
+
+      const csv = [headers.join(","), ...rows].join("\n");
+      const date = new Date().toISOString().slice(0, 10);
+      downloadFile(`expense-export-${date}.csv`, csv, "text/csv;charset=utf-8");
+    }
+
+    document.getElementById("exportJsonBtn").addEventListener("click", exportJSON);
+    document.getElementById("exportCsvBtn").addEventListener("click", exportCSV);
+
+    // ===== Import =====
+    const importBtn = document.getElementById("importBtn");
+    const importFile = document.getElementById("importFile");
+
+    importBtn.addEventListener("click", () => importFile.click());
+
+    importFile.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+
+          // Support both full backup format and plain array
+          let importedTransactions = [];
+          let importedBudget = budget;
+
+          if (Array.isArray(data)) {
+            importedTransactions = data;
+          } else if (data && typeof data === "object") {
+            if (Array.isArray(data.transactions)) {
+              importedTransactions = data.transactions;
+            }
+            if (typeof data.budget === "number") {
+              importedBudget = data.budget;
+            }
+          } else {
+            throw new Error("Invalid backup format");
+          }
+
+          // Basic validation
+          importedTransactions = importedTransactions.filter(t =>
+            t && typeof t.amount === "number" && t.createdAt && (t.type === "expense" || t.type === "income")
+          );
+
+          if (importedTransactions.length === 0 && importedBudget === budget) {
+            alert("No valid data found in this file.");
+            return;
+          }
+
+          const confirmMsg = `Restore backup?\n\n` +
+            `• Transactions: ${importedTransactions.length}\n` +
+            `• Budget: Rp ${Number(importedBudget).toLocaleString("id-ID")}\n\n` +
+            `This will replace your current data.`;
+
+          if (!confirm(confirmMsg)) {
+            importFile.value = "";
+            return;
+          }
+
+          transactions = importedTransactions;
+          budget = importedBudget;
+          save();
+          render();
+          alert("Backup restored successfully!");
+        } catch (err) {
+          console.error(err);
+          alert("Could not read this file. Please select a valid JSON backup.");
+        }
+        importFile.value = "";
+      };
+      reader.readAsText(file);
+    });
+
+    render()
